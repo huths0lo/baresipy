@@ -202,14 +202,25 @@ class BareSIP(Thread):
             self.send_audio(self.tts.get_mp3(speech))
             sleep(0.5)
 
+    def fixup_audio_bitrate(self, wav_file):
+        fixed_up_wav = wav_file[:-4] + '2.wav'
+        cmd = f'ffmpeg -y -i {wav_file} -ac 1 -ar 8000 {fixed_up_wav}'
+        subprocess.run([cmd], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, shell=True)
+        return fixed_up_wav
+
+    def transfer_call(self, dn):
+        cmd = f't{dn}'
+        self.do_command(cmd)
+
     def send_audio(self, wav_file):
         if not self.call_established:
             LOG.error("Can't send audio without an active call!")
             return
         wav_file, duration = self.convert_audio(wav_file)
+        fixed_up_wav = self.fixup_audio_bitrate(wav_file)
         # send audio stream
         LOG.info("transmitting audio")
-        self.do_command("/ausrc aufile," + wav_file)
+        self.do_command("/ausrc aufile," + fixed_up_wav)
         # wait till playback ends
         sleep(duration - 0.5)
         # avoid baresip exiting
